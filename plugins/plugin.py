@@ -4,7 +4,7 @@ import pcbnew # type: ignore
 
 from .thread import ProcessThread
 from .events import StatusEvent
-from .options import AUTO_FILL_OPT, AUTO_TRANSLATE_OPT, EXCLUDE_DNP_OPT, EXTEND_EDGE_CUT_OPT, ALTERNATIVE_EDGE_CUT_OPT, EXTRA_LAYERS, ALL_ACTIVE_LAYERS_OPT
+from .options import AUTO_FILL_OPT, AUTO_TRANSLATE_OPT, EXCLUDE_DNP_OPT, EXTEND_EDGE_CUT_OPT, ALTERNATIVE_EDGE_CUT_OPT, EXTRA_LAYERS, ALL_ACTIVE_LAYERS_OPT, SPLIT_PCB
 from .utils import load_user_options, save_user_options, get_layer_names
 
 
@@ -52,6 +52,8 @@ class KiCadToJLCForm(wx.Frame):
         self.mExtendEdgeCutsCheckbox.SetValue(userOptions[EXTEND_EDGE_CUT_OPT])
         self.mAlternativeEdgeCutsCheckbox = wx.CheckBox(self, label='Use User.2 for alternative Edge-Cut layer')
         self.mAlternativeEdgeCutsCheckbox.SetValue(userOptions[ALTERNATIVE_EDGE_CUT_OPT])
+        self.mSplitPCBsCheckbox = wx.CheckBox(self, label='Use User.7 for rule areas as sub-PCBs layer')
+        self.mSplitPCBsCheckbox.SetValue(userOptions[SPLIT_PCB])
         self.mAutomaticTranslationCheckbox = wx.CheckBox(self, label='Apply automatic translations')
         self.mAutomaticTranslationCheckbox.SetValue(userOptions[AUTO_TRANSLATE_OPT])
         self.mAutomaticFillCheckbox = wx.CheckBox(self, label='Apply automatic fill for all zones')
@@ -75,6 +77,7 @@ class KiCadToJLCForm(wx.Frame):
         boxSizer.Add(self.mAllActiveLayersCheckbox, 0, wx.ALL, 5)
         boxSizer.Add(self.mExtendEdgeCutsCheckbox, 0, wx.ALL, 5)
         boxSizer.Add(self.mAlternativeEdgeCutsCheckbox, 0, wx.ALL, 5)
+        boxSizer.Add(self.mSplitPCBsCheckbox, 0, wx.ALL, 5)
         boxSizer.Add(self.mAutomaticTranslationCheckbox, 0, wx.ALL, 5)
         boxSizer.Add(self.mAutomaticFillCheckbox, 0, wx.ALL, 5)
         boxSizer.Add(self.mExcludeDnpCheckbox, 0, wx.ALL, 5)
@@ -104,6 +107,7 @@ class KiCadToJLCForm(wx.Frame):
         options[ALL_ACTIVE_LAYERS_OPT] = self.mAllActiveLayersCheckbox.GetValue()
         options[EXTEND_EDGE_CUT_OPT] = self.mExtendEdgeCutsCheckbox.GetValue()
         options[ALTERNATIVE_EDGE_CUT_OPT] = self.mAlternativeEdgeCutsCheckbox.GetValue()
+        options[SPLIT_PCB] = self.mSplitPCBsCheckbox.GetValue()
         options[AUTO_TRANSLATE_OPT] = self.mAutomaticTranslationCheckbox.GetValue()
         options[AUTO_FILL_OPT] = self.mAutomaticFillCheckbox.GetValue()
         options[EXCLUDE_DNP_OPT] = self.mExcludeDnpCheckbox.GetValue()
@@ -115,6 +119,7 @@ class KiCadToJLCForm(wx.Frame):
         self.mAllActiveLayersCheckbox.Hide()
         self.mExtendEdgeCutsCheckbox.Hide()
         self.mAlternativeEdgeCutsCheckbox.Hide()
+        self.mSplitPCBsCheckbox.Hide()
         self.mAutomaticTranslationCheckbox.Hide()
         self.mAutomaticFillCheckbox.Hide()
         self.mExcludeDnpCheckbox.Hide()

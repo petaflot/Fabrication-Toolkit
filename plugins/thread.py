@@ -18,7 +18,7 @@ class ProcessThread(Thread):
     def __init__(self, wx, options, cli = None, openBrowser = True):
         Thread.__init__(self)
 
-        # prevent use of cli and grapgical mode at the same time
+        # prevent use of cli and graphical mode at the same time
         if (wx is None and cli is None) or (wx is not None and cli is not None):
             logging.error("Specify either graphical or cli use!")
             return
@@ -49,6 +49,9 @@ class ProcessThread(Thread):
 
         _, temp_file = tempfile.mkstemp()
         project_directory = os.path.dirname(self.process_manager.board.GetFileName())
+
+        print(options)
+        # TODO loop over all rule areas in layer 7 that have no options checked
 
         try:
             # Verify all zones are up-to-date
@@ -108,7 +111,7 @@ class ProcessThread(Thread):
                 self.progress(85 + percent / 8)
 
         # generate gerber name
-        title_block = self.process_manager.board.GetTitleBlock()
+        title_block = self.process_manager.board.GetTitleBlock()    # TODO if splitpcb: append rule area name
         title = title_block.GetTitle()
         revision = title_block.GetRevision()
         company = title_block.GetCompany()
@@ -122,17 +125,17 @@ class ProcessThread(Thread):
             file_date = pcbnew.ExpandTextVars(file_date, project)
 
         # make output dir
-        filename = os.path.splitext(os.path.basename(self.process_manager.board.GetFileName()))[0]
+        filename = os.path.splitext(os.path.basename(self.process_manager.board.GetFileName()))[0]    # TODO if splitpcb: append rule area name
         output_path = os.path.join(project_directory, outputFolder)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         
         # rename gerber archive
-        gerberArchiveName = ProcessManager.normalize_filename("_".join(("{} {}".format(title or filename, revision or '').strip() + '.zip').split()))
+        gerberArchiveName = ProcessManager.normalize_filename("_".join(("{} {}".format(title or filename, revision or '').strip() + '.zip').split()))    # TODO if splitpcb: append rule area name
         os.rename(temp_file, os.path.join(temp_dir, gerberArchiveName))
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
-        backup_name = ProcessManager.normalize_filename("_".join(("{} {} {}".format(title or filename, revision or '', timestamp).strip()).split()))
+        backup_name = ProcessManager.normalize_filename("_".join(("{} {} {}".format(title or filename, revision or '', timestamp).strip()).split()))    # TODO if splitpcb: append rule area name
         shutil.make_archive(os.path.join(output_path, 'backups', backup_name), 'zip', temp_dir)
 
 
@@ -153,6 +156,6 @@ class ProcessThread(Thread):
 
     def progress(self, percent):
         if self.wx is None:
-            print_cli_progress_bar(percent, prefix = 'Progress:', suffix = 'Complete', length = 50)
+            print_cli_progress_bar(percent, prefix = 'Progress:', suffix = 'Complete', length = 50)    # TODO if splitpcb: append rule area name
         else:
             wx.PostEvent(self.wx, StatusEvent(percent))

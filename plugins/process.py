@@ -29,8 +29,11 @@ class ProcessManager:
         self.__rotation_db = self.__read_rotation_db()
 
     @staticmethod
-    def normalize_filename(filename):
-        return re.sub(r'[^\w\s\.\-]', '', filename)
+    def normalize_filename(filename, subpcb = None):
+        if subpcb is None:
+            return re.sub(r'[^\w\s\.\-]', '', filename)
+        else:
+            return re.sub(r'[^\w\s\.\-]', '', filename)+'_'+subpcb
 
     def update_zone_fills(self):
         '''Verify all zones have up-to-date fills.'''
@@ -45,7 +48,7 @@ class ProcessManager:
         # Finally rebuild the connectivity db
         self.board.BuildConnectivity()
 
-    def generate_gerber(self, temp_dir, extra_layers, extend_edge_cuts, alternative_edge_cuts, all_active_layers):
+    def generate_gerber(self, temp_dir, extra_layers, extend_edge_cuts, alternative_edge_cuts, all_active_layers, splitpcb):
         '''Generate the Gerber files.'''
         settings = self.board.GetDesignSettings()
         settings.m_SolderMaskMargin = 50000
@@ -269,7 +272,7 @@ class ProcessManager:
                     if ('**' not in component['Designator']):
                         csv_writer.writerow(component.values())
 
-    def generate_bom(self, temp_dir):
+    def generate_bom(self, temp_dir, splitpcb):
         '''Generate the bom file.'''
         if len(self.bom) > 0:
             with open((os.path.join(temp_dir, bomFileName)), 'w', newline='', encoding='utf-8-sig') as outfile:

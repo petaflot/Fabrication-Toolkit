@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser.add_argument("--additionalLayers",   "-aL", type=str, help="Additional layers(comma-separated)")
     parser.add_argument("--user1VCut",          "-u1", action="store_true", help="Set User.1 as V-Cut layer")
     parser.add_argument("--user2AltVCut",       "-u2", action="store_true", help="Use User.2 for alternative Edge-Cut layer")
+    parser.add_argument("--user7SplitPCBs",     "-u7", action="store_true", help="Use User.7 for rule areas as sub-PCBs layer")
     parser.add_argument("--autoTranslate",      "-t",  action="store_true", help="Apply automatic position/rotation translations")
     parser.add_argument("--autoFill",           "-f",  action="store_true", help="Apply automatic fill for all zones")
     parser.add_argument("--excludeDNP",         "-e",  action="store_true", help="Exclude DNP components from BOM")
