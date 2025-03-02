@@ -48,8 +48,9 @@ class ProcessManager:
         # Finally rebuild the connectivity db
         self.board.BuildConnectivity()
 
-    def generate_gerber(self, temp_dir, extra_layers, extend_edge_cuts, alternative_edge_cuts, all_active_layers, splitpcb):
+    def generate_gerber(self, temp_dir, extra_layers, extend_edge_cuts, alternative_edge_cuts, all_active_layers, pcb_area):
         '''Generate the Gerber files.'''
+        # TODO trim out everything not in pcb_area
         settings = self.board.GetDesignSettings()
         settings.m_SolderMaskMargin = 50000
         settings.m_SolderMaskToCopperClearance = 5000
@@ -70,7 +71,7 @@ class ProcessManager:
         plot_options.SetSubtractMaskFromSilk(True)
         plot_options.SetUseGerberX2format(False)
         plot_options.SetDrillMarksType(0)  # NO_DRILL_SHAPE
-        
+
         if hasattr(plot_options, "SetExcludeEdgeLayer"):
             plot_options.SetExcludeEdgeLayer(True)
 
@@ -102,7 +103,7 @@ class ProcessManager:
 
         plot_controller.ClosePlot()
 
-    def generate_drills(self, temp_dir):
+    def generate_drills(self, temp_dir, pcb_area):
         '''Generate the drill file.'''
         drill_writer = pcbnew.EXCELLON_WRITER(self.board)
 
@@ -114,13 +115,14 @@ class ProcessManager:
         drill_writer.SetFormat(True)
         drill_writer.SetMapFileFormat(pcbnew.PLOT_FORMAT_GERBER)
         drill_writer.CreateDrillandMapFilesSet(temp_dir, True, True)
+        # TODO trim drill file based on pcb_are.is_inside()
 
     def generate_netlist(self, temp_dir):
         '''Generate the connection netlist.'''
         netlist_writer = pcbnew.IPC356D_WRITER(self.board)
         netlist_writer.Write(os.path.join(temp_dir, netlistFileName))
 
-    def _get_footprint_position(self, footprint): 
+    def _get_footprint_position(self, footprint):
         """Calculate position based on center of pads / bounding box."""
         origin_type = self._get_origin_from_footprint(footprint)
 
@@ -136,15 +138,17 @@ class ProcessManager:
                 position = bbox.GetCenter()
             else:
                 position = footprint.GetPosition()      # if we have no pads we fallback to anchor
-    
+
         return position
 
-    def generate_tables(self, temp_dir, auto_translate, exclude_dnp):
+    def generate_tables(self, temp_dir, auto_translate, exclude_dnp, pcb_area):
         '''Generate the data tables.'''
         if hasattr(self.board, 'GetModules'):
             footprints = list(self.board.GetModules())
         else:
             footprints = list(self.board.GetFootprints())
+
+        # TODO trim list based on pcb_area.is_inside(component)
 
         # sort footprint after designator
         footprints.sort(key=lambda x: x.GetReference().upper())
@@ -175,8 +179,8 @@ class ProcessManager:
             #     2: 'unspecified'
             # }.get(footprint.GetAttributes())
 
-            is_dnp = (footprint_has_field(footprint, 'dnp') 
-                      or (footprint.GetValue().upper() == 'DNP') 
+            is_dnp = (footprint_has_field(footprint, 'dnp')
+                      or (footprint.GetValue().upper() == 'DNP')
                       or getattr(footprint, 'IsDNP', bool)())
             skip_dnp = exclude_dnp and is_dnp
 
@@ -259,7 +263,7 @@ class ProcessManager:
                         'LCSC Part #': self._get_mpn_from_footprint(footprint),
                     })
 
-    def generate_positions(self, temp_dir):
+    def generate_positions(self, temp_dir, pcb_area):
         '''Generate the position file.'''
         if len(self.components) > 0:
             with open((os.path.join(temp_dir, placementFileName)), 'w', newline='', encoding='utf-8-sig') as outfile:
@@ -268,11 +272,12 @@ class ProcessManager:
                 csv_writer.writerow(self.components[0].keys())
 
                 for component in self.components:
-                    # writing data of CSV file
-                    if ('**' not in component['Designator']):
-                        csv_writer.writerow(component.values())
+                    if pcb_area.is_inside(component):   # TODO extract component coordinates
+                        # writing data of CSV file
+                        if ('**' not in component['Designator']):
+                            csv_writer.writerow(component.values())
 
-    def generate_bom(self, temp_dir, splitpcb):
+    def generate_bom(self, temp_dir, pcb_area):
         '''Generate the bom file.'''
         if len(self.bom) > 0:
             with open((os.path.join(temp_dir, bomFileName)), 'w', newline='', encoding='utf-8-sig') as outfile:
@@ -282,11 +287,12 @@ class ProcessManager:
 
                 # Output all of the component information
                 for component in self.bom:
-                    # writing data of CSV file
-                    if ('**' not in component['Designator']):
-                        csv_writer.writerow(component.values())
+                    if pcb_area.is_inside(component):   # TODO extract component coordinates
+                        # writing data of CSV file
+                        if ('**' not in component['Designator']):
+                            csv_writer.writerow(component.values())
 
-    def generate_archive(self, temp_dir, temp_file):
+    def generate_archive(self, temp_dir, temp_file, pcb_area):
         '''Generate the archive file.'''
         temp_file = shutil.make_archive(temp_file, 'zip', temp_dir)
         temp_file = shutil.move(temp_file, temp_dir)
@@ -297,7 +303,7 @@ class ProcessManager:
                 os.remove(os.path.join(temp_dir, item))
 
         return temp_file
-    
+
     """ Private """
 
     def __read_rotation_db(self, filename: str = os.path.join(os.path.dirname(__file__), 'transformations.csv')) -> dict[str, float]:
@@ -355,7 +361,7 @@ class ProcessManager:
                     db[rowNum]['name'] = row['footprint']
                     db[rowNum]['rotation'] = rotation
                     db[rowNum]['x'] = delta_x
-                    db[rowNum]['y'] = delta_y 
+                    db[rowNum]['y'] = delta_y
 
         return db
 
@@ -482,7 +488,7 @@ class ProcessManager:
                 return (float(offset[0]), float(offset[1]))
             except Exception as e:
                 raise RuntimeError("Position offset of {} is not a valid pair of numbers".format(footprint.GetReference()))
-            
+
     def _get_origin_from_footprint(self, footprint) -> float:
         '''Get the origin from standard symbol fields.'''
         keys = ['FT Origin']
@@ -493,7 +499,7 @@ class ProcessManager:
         # determine origin type by package type
         if attributes & pcbnew.FP_SMD:
             origin_type = 'Anchor'
-        else: 
+        else:
             origin_type = 'Center'
 
         for key in keys + fallback_keys:
@@ -511,3 +517,45 @@ class ProcessManager:
         pattern = re.compile(r'^(\w*_SMD:)?\w{1,4}_(\d+)_\d+Metric.*$')
 
         return pattern.sub(r'\2', footprint)
+
+class RuleArea:
+    """ a rule area used as a sub-PCB region"""
+    def __init__(self, name, vertices):
+        if name is None:
+            self.name = ''
+        else:
+            self.name = '_'+name
+            self.shape, self.vertices = self.is_rectangle(vertices)
+            if self.shape is not 'rectangle':
+                raise NotImplementedError
+
+    def is_inside(self, coords, size = 0):
+        """ checks if a point is inside or outside this area"""
+        if self.name == '':
+            return (True, False)
+        elif self.shape == 'rectangle':
+            (x1, y1), (_, _), (x3, y3), (_, _) = rect
+            px, py = point
+
+            is_inside = (x1 < px < x3) and (y1 < py < y3)
+            is_overlapping = (x1 - radius <= px <= x3 + radius) and (y1 - radius <= py <= y3 + radius)
+
+            return (is_inside, is_overlapping)
+        else:
+            raise NotImplementedError
+
+    def is_rectangle(coords):
+        """ check if a number of x,y coordinate pairs are part of non-rotated rotated rectangle ; return ordered corners if yes, else None"""
+        if len(coords) != 4:
+            return None
+
+        # Sort points by x, then by y
+        coords = sorted(coords)
+
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4) = coords
+
+        # Check for a non-rotated rectangle
+        if x1 == x2 and x3 == x4 and y1 == y3 and y2 == y4:
+            return 'rectangle', [(x1, y1), (x2, y2), (x3, y3), (x4, y4)]
+
+        return None, None
